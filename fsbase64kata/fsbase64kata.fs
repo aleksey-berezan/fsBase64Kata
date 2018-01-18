@@ -6,7 +6,8 @@ open System.Text
 let base64Table = [| 'A';'B';'C';'D';'E';'F';'G';'H';'I';'J';'K';'L';'M';'N';'O';'P';'Q';'R';'S';'T';'U';'V';'W';'X';'Y';'Z';'a';'b';'c';'d';'e';'f';'g';'h';'i';'j';'k';'l';'m';'n';'o';'p';'q';'r';'s';'t';'u';'v';'w';'x';'y';'z';'0';'1';'2';'3';'4';'5';'6';'7';'8';'9';'+';'/' |]
 
 let encode (s:string) =
-    let rec encodeInternal (input : byte[]) (encoded : byte[]) (i : int) (ti : int) : byte[] =
+    let toBase64Char (b:byte) = base64Table.[int(b)]
+    let rec encodeInternal (input : byte[]) (encoded : char[]) (encodeLength : int) (i : int) (ti : int) : char[] =
         let length = input.Length
         if i >= length then encoded
         else
@@ -15,11 +16,11 @@ let encode (s:string) =
             let c = if i+2 < length then input.[i+2] else 0uy
 
             // 000000_00|0000_0000|00_000000
-            encoded.[ti] <- a >>> 2
-            encoded.[ti+1] <- ((a &&& 3uy) <<< 4) ||| (b >>> 4)
-            encoded.[ti+2] <- (b &&& 15uy) <<< 2 ||| (c >>> 6)
-            encoded.[ti+3] <- c &&& 63uy
-            encodeInternal input encoded (i+3) (ti+4)
+            encoded.[ti] <- a >>> 2 |> toBase64Char
+            encoded.[ti+1] <- ((a &&& 3uy) <<< 4) ||| (b >>> 4) |> toBase64Char
+            encoded.[ti+2] <- if ti+2 < encodeLength then (b &&& 15uy) <<< 2 ||| (c >>> 6) |> toBase64Char else '='
+            encoded.[ti+3] <- if ti+3 < encodeLength then c &&& 63uy |> toBase64Char else '='
+            encodeInternal input encoded encodeLength (i+3) (ti+4)
 
     let input = s |> Encoding.UTF8.GetBytes
     let inputLength = input.Length
@@ -27,13 +28,9 @@ let encode (s:string) =
     let padding = match inputLength % 3 with
                   | 0 -> 0
                   | r -> 3 - r
-    let encoded = encodeInternal input (Array.zeroCreate outputLength) 0 0
-    let result = Array.create outputLength '='
-    for i = 0 to outputLength - padding - 1 do
-        let b = encoded.[i]
-        result.[i] <- base64Table.[int(b)]
 
-    String(result)
+    let encoded = encodeInternal input (Array.create outputLength '=') (outputLength - padding) 0 0
+    String(encoded)
 
 let runTest input expected =
     let actual = encode input
