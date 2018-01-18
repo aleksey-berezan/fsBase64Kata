@@ -17,13 +17,8 @@ let encode (s:string) =
             // 000000_00|0000_0000|00_000000
             encoded.[ti] <- a >>> 2
             encoded.[ti+1] <- ((a &&& 3uy) <<< 4) ||| (b >>> 4)
-            if ti+2 < encoded.Length
-                then encoded.[ti+2] <- (b &&& 15uy) <<< 2 ||| (c >>> 6)
-                else ()
-            if ti+3 < encoded.Length
-                then encoded.[ti+3] <- c &&& 63uy
-                else ()
-
+            encoded.[ti+2] <- (b &&& 15uy) <<< 2 ||| (c >>> 6)
+            encoded.[ti+3] <- c &&& 63uy
             encodeInternal input encoded (i+3) (ti+4)
 
     let input = s |> Encoding.UTF8.GetBytes
